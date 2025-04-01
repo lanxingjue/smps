@@ -1,4 +1,4 @@
-module github.com/lanxingjue/smps
+module smps
 
 go 1.23.1
 

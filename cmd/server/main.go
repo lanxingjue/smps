@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/lanxingjue/smps/pkg/logger"
+	"smps/pkg/logger"
 
 	"gopkg.in/yaml.v2"
 )

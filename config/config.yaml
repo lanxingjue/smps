@@ -1,7 +1,15 @@
 server:
   listen_address: ":5010"
   max_connections: 100
+
 client:
   smsc_address: "127.0.0.1:2775"
-  system_id: "smps_client"
-  password: "password"
+  system_id: "test_client"
+  password: "test123"
+  reconnect_interval: 5s
+  max_retries: 3
+  backoff_factor: 2
+
+protocol:
+  enquire_interval: 30s
+  response_timeout: 10s
