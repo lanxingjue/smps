@@ -1,0 +1,7 @@
+server:
+  listen_address: ":5010"
+  max_connections: 100
+client:
+  smsc_address: "127.0.0.1:2775"
+  system_id: "smps_client"
+  password: "password"
