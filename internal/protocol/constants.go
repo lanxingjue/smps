@@ -25,3 +25,20 @@ const (
 	Session_Disconnect = 2 // 断开
 	Session_Closed     = 3 // 关闭
 )
+
+// 补充绑定状态码
+const (
+	E_SUCCESS           = 0x00000000 // 连接成功
+	E_OTHERERR          = 0x00000001 // 未指定类型错误
+	E_PASSWORD          = 0x00000002 // 密码错误
+	E_SYSTEMID          = 0x00000003 // 接口的标识符错误
+	E_SYSTEMTYPE        = 0x00000004 // 接口的类型错误
+	E_INTERFACE_VERSION = 0x00000005 // 接口的版本号错误
+)
+
+// 补充解绑相关常量
+const (
+	UNBIND      = 0x00000006
+	UNBIND_RESP = 0x80000006
+	UNBIND_OK   = 0x00000000 // 断开连接成功
+)

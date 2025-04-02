@@ -2,7 +2,9 @@
 package protocol
 
 import (
+	"bytes"
 	"encoding/binary"
+	"errors"
 	"io"
 )
 
@@ -22,4 +24,19 @@ func (h *SMPPHeader) Write(w io.Writer) error {
 // Read 从读取器中读取头部信息
 func (h *SMPPHeader) Read(r io.Reader) error {
 	return binary.Read(r, binary.BigEndian, h)
+}
+
+// ParseHeader 从字节数组解析头部
+func ParseHeader(data []byte) (*SMPPHeader, error) {
+	if len(data) < 16 {
+		return nil, errors.New("header too short")
+	}
+
+	header := &SMPPHeader{}
+	reader := bytes.NewReader(data)
+	if err := binary.Read(reader, binary.BigEndian, header); err != nil {
+		return nil, err
+	}
+
+	return header, nil
 }

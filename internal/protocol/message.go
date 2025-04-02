@@ -75,6 +75,28 @@ func CreateEnquireLinkResponse(sequence uint32) *Message {
 	return NewMessage(ENQUIRE_LINK_RESP, SMPP_ESME_ROK, sequence, nil)
 }
 
+// AddTLV 添加TLV参数到消息
+func (m *Message) AddTLV(tag uint16, value []byte) {
+	tlv := TLV{
+		Tag:   tag,
+		Len:   uint16(len(value)),
+		Value: value,
+	}
+
+	m.TLVs = append(m.TLVs, tlv)
+	m.Header.CommandLength += uint32(4 + len(value)) // 更新消息长度
+}
+
+// CreateEnquireLink 创建链路查询请求
+func CreateEnquireLink(sequence uint32) *Message {
+	return NewMessage(ENQUIRE_LINK, 0, sequence, nil)
+}
+
+// CreateUnbindResponse 创建解绑响应
+func CreateUnbindResponse(sequence uint32, status uint32) *Message {
+	return NewMessage(UNBIND_RESP, status, sequence, nil)
+}
+
 // ParseMessage 从字节数组解析消息
 func ParseMessage(data []byte) (*Message, error) {
 	if len(data) < 16 {
