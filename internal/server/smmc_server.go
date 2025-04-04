@@ -567,3 +567,26 @@ func parseDeliverSM(payload []byte) (sourceAddr, destAddr, shortMessage string, 
 func (s *Server) GetSessionManager() *SessionManager {
 	return s.sessionMgr
 }
+
+// SendMessage 向会话发送消息
+func (s *Server) SendMessage(session *Session, msg *protocol.Message) error {
+	if session == nil || session.Conn == nil {
+		return errors.New("会话无效或连接已关闭")
+	}
+
+	// 设置写入超时
+	if err := session.Conn.SetWriteDeadline(time.Now().Add(s.config.WriteTimeout)); err != nil {
+		return err
+	}
+
+	// 发送消息
+	_, err := session.Conn.Write(msg.Bytes())
+	if err != nil {
+		return err
+	}
+
+	atomic.AddUint64(&s.stats.sentMessages, 1)
+	session.IncrementSent()
+
+	return nil
+}

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 )
 
 // TLV 表示一个TLV参数
@@ -122,4 +123,99 @@ func ParseMessage(data []byte) (*Message, error) {
 	}
 
 	return message, nil
+}
+
+// CloneMessage 克隆消息
+func CloneMessage(msg *Message) *Message {
+	if msg == nil {
+		return nil
+	}
+
+	// 复制负载
+	payload := make([]byte, len(msg.Payload))
+	copy(payload, msg.Payload)
+
+	// 创建新消息
+	newMsg := &Message{
+		Header: SMPPHeader{
+			CommandLength:  msg.Header.CommandLength,
+			CommandID:      msg.Header.CommandID,
+			CommandStatus:  msg.Header.CommandStatus,
+			SequenceNumber: msg.Header.SequenceNumber,
+		},
+		Payload: payload,
+	}
+
+	// 复制TLV
+	if len(msg.TLVs) > 0 {
+		newMsg.TLVs = make([]TLV, len(msg.TLVs))
+		for i, tlv := range msg.TLVs {
+			// 复制TLV值
+			value := make([]byte, len(tlv.Value))
+			copy(value, tlv.Value)
+
+			newMsg.TLVs[i] = TLV{
+				Tag:   tlv.Tag,
+				Len:   tlv.Len,
+				Value: value,
+			}
+		}
+	}
+
+	return newMsg
+}
+
+// GetCommandName 获取命令名称
+func GetCommandName(commandID uint32) string {
+	switch commandID {
+	case BIND_RECEIVER:
+		return "BIND_RECEIVER"
+	case BIND_RECEIVER_RESP:
+		return "BIND_RECEIVER_RESP"
+	case DELIVER_SM:
+		return "DELIVER_SM"
+	case DELIVER_SM_RESP:
+		return "DELIVER_SM_RESP"
+	case ENQUIRE_LINK:
+		return "ENQUIRE_LINK"
+	case ENQUIRE_LINK_RESP:
+		return "ENQUIRE_LINK_RESP"
+	case UNBIND:
+		return "UNBIND"
+	case UNBIND_RESP:
+		return "UNBIND_RESP"
+	default:
+		return fmt.Sprintf("UNKNOWN(0x%08X)", commandID)
+	}
+}
+
+// ParseMessageContent 解析消息内容
+func ParseMessageContent(msg *Message) (sourceAddr, destAddr, content string, err error) {
+	// 仅处理短信投递消息
+	if msg.Header.CommandID != DELIVER_SM || len(msg.Payload) < 2 {
+		return "", "", "", errors.New("非短信投递消息或负载无效")
+	}
+
+	// 解析消息内容
+	fields := bytes.Split(msg.Payload, []byte{0})
+	if len(fields) < 4 {
+		return "", "", "", errors.New("无效的消息格式")
+	}
+
+	// 第二个字段是源地址
+	if len(fields) > 1 {
+		sourceAddr = string(fields[1])
+	}
+
+	// 第三个字段是目标地址
+	if len(fields) > 2 {
+		destAddr = string(fields[2])
+	}
+
+	// 第四个字段是消息内容
+	if len(fields) > 3 {
+		content = string(fields[3])
+	}
+
+	return
 }
