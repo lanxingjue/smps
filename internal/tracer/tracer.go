@@ -93,3 +93,13 @@ func (t *ProtocolTracer) GetRecentLogs() []*ProtocolLog {
 func (t *ProtocolTracer) ClearLogs() error {
 	return t.logger.storage.Clear()
 }
+
+// IsEnabled 检查跟踪是否启用
+func (t *ProtocolTracer) IsEnabled() bool {
+	return t.config.IsEnabled()
+}
+
+// IsParseContentEnabled 检查内容解析是否启用
+func (t *ProtocolTracer) IsParseContentEnabled() bool {
+	return t.config.IsParseContentEnabled()
+}

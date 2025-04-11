@@ -1,0 +1,264 @@
+<!-- web/templates/dashboard.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#">SMPS管理系统</a>
+        <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="w-100"></div>
+        <div class="navbar-nav">
+            <div class="nav-item text-nowrap">
+                <a class="nav-link px-3" href="#" id="logout-btn">退出登录</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i> 仪表盘
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/sessions">
+                                <i class="bi bi-people"></i> 会话管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/configs">
+                                <i class="bi bi-gear"></i> 配置管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/traces">
+                                <i class="bi bi-search"></i> 协议跟踪
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">仪表盘</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-btn">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">活跃会话</h5>
+                                <h1 id="active-sessions">0</h1>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">每秒消息数</h5>
+                                <h1 id="messages-per-second">0</h1>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">总处理消息</h5>
+                                <h1 id="total-messages">0</h1>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">拦截率</h5>
+                                <h1 id="intercept-rate">0%</h1>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                系统状态
+                            </div>
+                            <div class="card-body">
+                                <table class="table">
+                                    <tbody>
+                                        <tr>
+                                            <td>服务器状态</td>
+                                            <td id="server-status">运行中</td>
+                                        </tr>
+                                        <tr>
+                                            <td>SMSC客户端状态</td>
+                                            <td id="client-status">已连接</td>
+                                        </tr>
+                                        <tr>
+                                            <td>系统启动时间</td>
+                                            <td id="uptime">00:00:00</td>
+                                        </tr>
+                                        <tr>
+                                            <td>系统时间</td>
+                                            <td id="system-time">2025-04-01 12:00:00</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                消息处理统计
+                            </div>
+                            <div class="card-body">
+                                <table class="table">
+                                    <tbody>
+                                        <tr>
+                                            <td>发送消息数</td>
+                                            <td id="sent-messages">0</td>
+                                        </tr>
+                                        <tr>
+                                            <td>接收消息数</td>
+                                            <td id="received-messages">0</td>
+                                        </tr>
+                                        <tr>
+                                            <td>拦截消息数</td>
+                                            <td id="intercepted-messages">0</td>
+                                        </tr>
+                                        <tr>
+                                            <td>放行消息数</td>
+                                            <td id="allowed-messages">0</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // 检查是否已登录
+            var token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 加载统计数据
+            loadStats();
+            
+            // 定时刷新统计数据
+            setInterval(loadStats, 5000);
+            
+            // 刷新按钮点击事件
+            $('#refresh-btn').click(function() {
+                loadStats();
+            });
+            
+            // 退出登录按钮点击事件
+            $('#logout-btn').click(function(e) {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('tokenExpiration');
+                window.location.href = '/login';
+            });
+        });
+        
+        // 加载统计数据
+        function loadStats() {
+            $.ajax({
+                url: '/api/stats',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function(data) {
+                    // 更新卡片数据
+                    $('#active-sessions').text(data.server_status.active_connections);
+                    $('#total-messages').text(data.processor_status.messages_processed);
+                    
+                    // 计算拦截率
+                    var total = data.processor_status.intercept_count + data.processor_status.allow_count;
+                    var interceptRate = total > 0 ? (data.processor_status.intercept_count / total * 100).toFixed(1) : '0';
+                    $('#intercept-rate').text(interceptRate + '%');
+                    
+                    // 更新系统状态
+                    $('#client-status').text(data.client_status.status);
+                    $('#system-time').text(formatDateTime(data.system_time));
+                    
+                    // 更新消息统计
+                    $('#sent-messages').text(data.server_status.sent_messages);
+                    $('#received-messages').text(data.server_status.received_messages);
+                    $('#intercepted-messages').text(data.processor_status.intercept_count);
+                    $('#allowed-messages').text(data.processor_status.allow_count);
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        // 未授权，跳转到登录页
+                        window.location.href = '/login';
+                    }
+                }
+            });
+            
+            // 加载实时统计
+            $.ajax({
+                url: '/api/stats/realtime',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function(data) {
+                    $('#messages-per-second').text(data.messages_per_second);
+                }
+            });
+        }
+        
+        // 格式化日期时间
+        function formatDateTime(dateString) {
+            var date = new Date(dateString);
+            return date.getFullYear() + '-' + 
+                   padZero(date.getMonth() + 1) + '-' + 
+                   padZero(date.getDate()) + ' ' + 
+                   padZero(date.getHours()) + ':' + 
+                   padZero(date.getMinutes()) + ':' + 
+                   padZero(date.getSeconds());
+        }
+        
+        // 补零
+        function padZero(num) {
+            return num < 10 ? '0' + num : num;
+        }
+    </script>
+</body>
+</html>

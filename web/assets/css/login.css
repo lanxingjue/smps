@@ -1,0 +1,32 @@
+/* web/assets/css/login.css */
+body {
+    background-color: #f5f5f5;
+  }
+  
+  .login-form {
+    max-width: 400px;
+    margin: 0 auto;
+    border-radius: 8px;
+  }
+  
+  .login-form .form-control {
+    position: relative;
+    box-sizing: border-box;
+    height: auto;
+    padding: 10px;
+    font-size: 16px;
+  }
+  
+  .login-form .form-control:focus {
+    z-index: 2;
+  }
+  
+  .login-form h2 {
+    margin-bottom: 24px;
+    font-weight: 500;
+  }
+  
+  .form-label {
+    font-weight: 500;
+  }
+  

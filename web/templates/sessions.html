@@ -1,0 +1,289 @@
+<!-- web/templates/sessions.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#">SMPS管理系统</a>
+        <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="w-100"></div>
+        <div class="navbar-nav">
+            <div class="nav-item text-nowrap">
+                <a class="nav-link px-3" href="#" id="logout-btn">退出登录</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i> 仪表盘
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/sessions">
+                                <i class="bi bi-people"></i> 会话管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/configs">
+                                <i class="bi bi-gear"></i> 配置管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/traces">
+                                <i class="bi bi-search"></i> 协议跟踪
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">会话管理</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-btn">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>外部网元ID</th>
+                                <th>状态</th>
+                                <th>远程地址</th>
+                                <th>创建时间</th>
+                                <th>空闲时间</th>
+                                <th>收/发消息</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessions-table">
+                            <!-- 会话列表将在这里动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 会话详情模态框 -->
+    <div class="modal fade" id="sessionDetailModal" tabindex="-1" aria-labelledby="sessionDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sessionDetailModalLabel">会话详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table">
+                        <tbody id="session-detail-content">
+                            <!-- 会话详情将在这里动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // 检查是否已登录
+            var token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 加载会话列表
+            loadSessions();
+            
+            // 刷新按钮点击事件
+            $('#refresh-btn').click(function() {
+                loadSessions();
+            });
+            
+            // 退出登录按钮点击事件
+            $('#logout-btn').click(function(e) {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('tokenExpiration');
+                window.location.href = '/login';
+            });
+            
+            // 详情按钮点击事件代理
+            $(document).on('click', '.view-session-btn', function() {
+                var sessionId = $(this).data('id');
+                viewSessionDetail(sessionId);
+            });
+            
+            // 关闭会话按钮点击事件代理
+            $(document).on('click', '.close-session-btn', function() {
+                var sessionId = $(this).data('id');
+                if (confirm('确定要关闭此会话吗？')) {
+                    closeSession(sessionId);
+                }
+            });
+        });
+        
+        // 加载会话列表
+        function loadSessions() {
+            $.ajax({
+                url: '/api/sessions',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function(data) {
+                    var tableHtml = '';
+                    
+                    if (data.length === 0) {
+                        tableHtml = '<tr><td colspan="8" class="text-center">暂无活跃会话</td></tr>';
+                    } else {
+                        for (var i = 0; i < data.length; i++) {
+                            var session = data[i];
+                            tableHtml += '<tr>';
+                            tableHtml += '<td>' + session.id + '</td>';
+                            tableHtml += '<td>' + session.system_id + '</td>';
+                            tableHtml += '<td><span class="badge bg-' + getStatusBadgeClass(session.status) + '">' + session.status + '</span></td>';
+                            tableHtml += '<td>' + session.remote_addr + ':' + session.remote_port + '</td>';
+                            tableHtml += '<td>' + formatDateTime(session.created_at) + '</td>';
+                            tableHtml += '<td>' + session.idle_time + '</td>';
+                            tableHtml += '<td>' + session.received_msgs + '/' + session.sent_msgs + '</td>';
+                            tableHtml += '<td>';
+                            tableHtml += '<button class="btn btn-sm btn-primary view-session-btn me-1" data-id="' + session.id + '"><i class="bi bi-eye"></i></button>';
+                            tableHtml += '<button class="btn btn-sm btn-danger close-session-btn" data-id="' + session.id + '"><i class="bi bi-x-circle"></i></button>';
+                            tableHtml += '</td>';
+                            tableHtml += '</tr>';
+                        }
+                    }
+                    
+                    $('#sessions-table').html(tableHtml);
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('加载会话列表失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 查看会话详情
+        function viewSessionDetail(sessionId) {
+            $.ajax({
+                url: '/api/sessions/' + sessionId,
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function(data) {
+                    var detailHtml = '';
+                    
+                    detailHtml += '<tr><th>ID</th><td>' + data.id + '</td></tr>';
+                    detailHtml += '<tr><th>外部网元ID</th><td>' + data.system_id + '</td></tr>';
+                    detailHtml += '<tr><th>状态</th><td><span class="badge bg-' + getStatusBadgeClass(data.status) + '">' + data.status + '</span></td></tr>';
+                    detailHtml += '<tr><th>远程地址</th><td>' + data.remote_addr + ':' + data.remote_port + '</td></tr>';
+                    detailHtml += '<tr><th>创建时间</th><td>' + formatDateTime(data.created_at) + '</td></tr>';
+                    detailHtml += '<tr><th>空闲时间</th><td>' + data.idle_time + '</td></tr>';
+                    detailHtml += '<tr><th>接口类型</th><td>' + data.interface_type + '</td></tr>';
+                    detailHtml += '<tr><th>协议</th><td>' + data.protocol + '</td></tr>';
+                    detailHtml += '<tr><th>接收消息数</th><td>' + data.received_msgs + '</td></tr>';
+                    detailHtml += '<tr><th>发送消息数</th><td>' + data.sent_msgs + '</td></tr>';
+                    
+                    $('#session-detail-content').html(detailHtml);
+                    $('#sessionDetailModal').modal('show');
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('获取会话详情失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 关闭会话
+        function closeSession(sessionId) {
+            $.ajax({
+                url: '/api/sessions/' + sessionId,
+                type: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function() {
+                    alert('会话已关闭');
+                    loadSessions();
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('关闭会话失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 获取状态徽章样式类
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case '已连接':
+                    return 'success';
+                case '初始化':
+                    return 'primary';
+                case '已断开':
+                    return 'warning';
+                case '已关闭':
+                    return 'danger';
+                default:
+                    return 'secondary';
+            }
+        }
+        
+        // 格式化日期时间
+        function formatDateTime(dateString) {
+            var date = new Date(dateString);
+            return date.getFullYear() + '-' + 
+                   padZero(date.getMonth() + 1) + '-' + 
+                   padZero(date.getDate()) + ' ' + 
+                   padZero(date.getHours()) + ':' + 
+                   padZero(date.getMinutes()) + ':' + 
+                   padZero(date.getSeconds());
+        }
+        
+        // 补零
+        function padZero(num) {
+            return num < 10 ? '0' + num : num;
+        }
+    </script>
+</body>
+</html>

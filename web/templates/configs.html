@@ -1,0 +1,385 @@
+<!-- web/templates/configs.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#">SMPS管理系统</a>
+        <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="w-100"></div>
+        <div class="navbar-nav">
+            <div class="nav-item text-nowrap">
+                <a class="nav-link px-3" href="#" id="logout-btn">退出登录</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i> 仪表盘
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/sessions">
+                                <i class="bi bi-people"></i> 会话管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/configs">
+                                <i class="bi bi-gear"></i> 配置管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/traces">
+                                <i class="bi bi-search"></i> 协议跟踪
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">外部网元配置</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-btn">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" id="add-config-btn">
+                                <i class="bi bi-plus-circle"></i> 添加网元
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>接口名称</th>
+                                <th>系统ID</th>
+                                <th>IP地址</th>
+                                <th>端口</th>
+                                <th>接口类型</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="configs-table">
+                            <!-- 配置列表将在这里动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 配置表单模态框 -->
+    <div class="modal fade" id="configFormModal" tabindex="-1" aria-labelledby="configFormModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="configFormModalLabel">添加网元配置</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="config-form">
+                        <input type="hidden" id="config-id">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="interface-name" class="form-label">接口名称</label>
+                                <input type="text" class="form-control" id="interface-name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="system-id" class="form-label">系统ID</label>
+                                <input type="text" class="form-control" id="system-id" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="password" class="form-label">密码</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="interface-type" class="form-label">接口类型</label>
+                                <select class="form-select" id="interface-type" required>
+                                    <option value="SMPP-M">SMPP-M协议接口</option>
+                                    <option value="SGIP">SGIP协议接口</option>
+                                    <option value="CMPP">CMPP协议接口</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="ip-address" class="form-label">IP地址</label>
+                                <input type="text" class="form-control" id="ip-address" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="port" class="form-label">端口</label>
+                                <input type="number" class="form-control" id="port" min="1" max="65535" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="protocol" class="form-label">通信协议</label>
+                                <select class="form-select" id="protocol" required>
+                                    <option value="TCPIP">TCPIP协议</option>
+                                    <option value="UDP">UDP协议</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="encoding-type" class="form-label">编码类型</label>
+                                <select class="form-select" id="encoding-type">
+                                    <option value="SMPP-M">SMPP-M编码</option>
+                                    <option value="UCS2">UCS2编码</option>
+                                    <option value="GSM7">GSM7编码</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="flow-control" class="form-label">流量控制(TPS)</label>
+                                <input type="number" class="form-control" id="flow-control" min="1" value="1000">
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="is-active" checked>
+                                    <label class="form-check-label" for="is-active">
+                                        是否启用
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="save-config-btn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // 检查是否已登录
+            var token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 加载配置列表
+            loadConfigs();
+            
+            // 刷新按钮点击事件
+            $('#refresh-btn').click(function() {
+                loadConfigs();
+            });
+            
+            // 添加配置按钮点击事件
+            $('#add-config-btn').click(function() {
+                $('#configFormModalLabel').text('添加网元配置');
+                $('#config-form')[0].reset();
+                $('#config-id').val('');
+                $('#configFormModal').modal('show');
+            });
+            
+            // 保存配置按钮点击事件
+            $('#save-config-btn').click(function() {
+                saveConfig();
+            });
+            
+            // 退出登录按钮点击事件
+            $('#logout-btn').click(function(e) {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('tokenExpiration');
+                window.location.href = '/login';
+            });
+            
+            // 编辑按钮点击事件代理
+            $(document).on('click', '.edit-config-btn', function() {
+                var configId = $(this).data('id');
+                editConfig(configId);
+            });
+            
+            // 删除按钮点击事件代理
+            $(document).on('click', '.delete-config-btn', function() {
+                var configId = $(this).data('id');
+                if (confirm('确定要删除此配置吗？')) {
+                    deleteConfig(configId);
+                }
+            });
+        });
+        
+        // 加载配置列表
+        function loadConfigs() {
+            $.ajax({
+                url: '/api/configs',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function(data) {
+                    var tableHtml = '';
+                    
+                    if (data.length === 0) {
+                        tableHtml = '<tr><td colspan="8" class="text-center">暂无配置</td></tr>';
+                    } else {
+                        for (var i = 0; i < data.length; i++) {
+                            var config = data[i];
+                            tableHtml += '<tr>';
+                            tableHtml += '<td>' + config.id + '</td>';
+                            tableHtml += '<td>' + config.interface_name + '</td>';
+                            tableHtml += '<td>' + config.system_id + '</td>';
+                            tableHtml += '<td>' + config.ip_address + '</td>';
+                            tableHtml += '<td>' + config.port + '</td>';
+                            tableHtml += '<td>' + config.interface_type + '</td>';
+                            tableHtml += '<td><span class="badge ' + (config.is_active ? 'bg-success' : 'bg-danger') + '">' + (config.is_active ? '已启用' : '已禁用') + '</span></td>';
+                            tableHtml += '<td>';
+                            tableHtml += '<button class="btn btn-sm btn-info edit-config-btn me-1" data-id="' + config.id + '"><i class="bi bi-pencil"></i></button>';
+                            tableHtml += '<button class="btn btn-sm btn-danger delete-config-btn" data-id="' + config.id + '"><i class="bi bi-trash"></i></button>';
+                            tableHtml += '</td>';
+                            tableHtml += '</tr>';
+                        }
+                    }
+                    
+                    $('#configs-table').html(tableHtml);
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('加载配置列表失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 编辑配置
+        function editConfig(configId) {
+            $.ajax({
+                url: '/api/configs/' + configId,
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function(data) {
+                    $('#configFormModalLabel').text('编辑网元配置');
+                    $('#config-id').val(data.id);
+                    $('#interface-name').val(data.interface_name);
+                    $('#system-id').val(data.system_id);
+                    $('#password').val(data.password);
+                    $('#interface-type').val(data.interface_type);
+                    $('#ip-address').val(data.ip_address);
+                    $('#port').val(data.port);
+                    $('#protocol').val(data.protocol);
+                    $('#encoding-type').val(data.encoding_type);
+                    $('#flow-control').val(data.flow_control);
+                    $('#is-active').prop('checked', data.is_active);
+                    
+                    $('#configFormModal').modal('show');
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('获取配置详情失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 保存配置
+        function saveConfig() {
+            var configId = $('#config-id').val();
+            var isNew = !configId;
+            
+            var configData = {
+                interface_name: $('#interface-name').val(),
+                system_id: $('#system-id').val(),
+                password: $('#password').val(),
+                interface_type: $('#interface-type').val(),
+                ip_address: $('#ip-address').val(),
+                port: parseInt($('#port').val()),
+                protocol: $('#protocol').val(),
+                encoding_type: $('#encoding-type').val(),
+                flow_control: parseInt($('#flow-control').val()),
+                is_active: $('#is-active').is(':checked')
+            };
+            
+            var url = '/api/configs';
+            var method = 'POST';
+            
+            if (!isNew) {
+                url += '/' + configId;
+                method = 'PUT';
+            }
+            
+            $.ajax({
+                url: url,
+                type: method,
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                contentType: 'application/json',
+                data: JSON.stringify(configData),
+                success: function() {
+                    $('#configFormModal').modal('hide');
+                    loadConfigs();
+                    alert(isNew ? '配置已添加' : '配置已更新');
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert((isNew ? '添加' : '更新') + '配置失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 删除配置
+        function deleteConfig(configId) {
+            $.ajax({
+                url: '/api/configs/' + configId,
+                type: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function() {
+                    loadConfigs();
+                    alert('配置已删除');
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('删除配置失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

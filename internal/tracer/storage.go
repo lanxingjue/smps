@@ -3,6 +3,8 @@ package tracer
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -245,4 +247,143 @@ func (s *DatabaseProtocolStorage) Query(options QueryOptions) ([]*ProtocolLog, e
 func (s *DatabaseProtocolStorage) Clear() error {
 	_, err := s.db.Exec("DELETE FROM protocol_logs")
 	return err
+}
+
+// LoadTracedNumbersFromDB 从数据库加载跟踪号码
+func (t *ProtocolTracer) LoadTracedNumbersFromDB() error {
+	if t.db == nil {
+		return errors.New("数据库连接未初始化")
+	}
+
+	// 查询跟踪号码
+	rows, err := t.db.Query("SELECT number FROM traced_numbers")
+	if err != nil {
+		return fmt.Errorf("查询跟踪号码失败: %v", err)
+	}
+	defer rows.Close()
+
+	// 清空现有跟踪号码
+	t.config.mu.Lock()
+	t.config.TracedNumbers = make(map[string]bool)
+
+	// 加载跟踪号码
+	for rows.Next() {
+		var number string
+		if err := rows.Scan(&number); err != nil {
+			t.config.mu.Unlock()
+			return fmt.Errorf("扫描跟踪号码失败: %v", err)
+		}
+
+		t.config.TracedNumbers[number] = true
+	}
+	t.config.mu.Unlock()
+
+	return nil
+}
+
+// SaveTracedNumber 保存跟踪号码到数据库
+func (t *ProtocolTracer) SaveTracedNumber(number string) error {
+	if t.db == nil {
+		return errors.New("数据库连接未初始化")
+	}
+
+	// 检查号码是否已存在
+	var count int
+	err := t.db.QueryRow("SELECT COUNT(*) FROM traced_numbers WHERE number = ?", number).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("检查跟踪号码失败: %v", err)
+	}
+
+	if count == 0 {
+		// 插入新号码
+		_, err = t.db.Exec("INSERT INTO traced_numbers (number) VALUES (?)", number)
+		if err != nil {
+			return fmt.Errorf("保存跟踪号码失败: %v", err)
+		}
+	}
+
+	// 添加到内存
+	t.AddTracedNumber(number)
+
+	return nil
+}
+
+// DeleteTracedNumber 从数据库删除跟踪号码
+func (t *ProtocolTracer) DeleteTracedNumber(number string) error {
+	if t.db == nil {
+		return errors.New("数据库连接未初始化")
+	}
+
+	// 从数据库删除
+	_, err := t.db.Exec("DELETE FROM traced_numbers WHERE number = ?", number)
+	if err != nil {
+		return fmt.Errorf("删除跟踪号码失败: %v", err)
+	}
+
+	// 从内存移除
+	t.RemoveTracedNumber(number)
+
+	return nil
+}
+
+// LoadConfigFromDB 从数据库加载跟踪配置
+func (t *ProtocolTracer) LoadConfigFromDB() error {
+	if t.db == nil {
+		return errors.New("数据库连接未初始化")
+	}
+
+	// 查询配置
+	rows, err := t.db.Query("SELECT config_key, config_value FROM system_config WHERE config_key IN ('trace_enabled', 'parse_content')")
+	if err != nil {
+		return fmt.Errorf("查询跟踪配置失败: %v", err)
+	}
+	defer rows.Close()
+
+	// 加载配置
+	for rows.Next() {
+		var key, value string
+		if err := rows.Scan(&key, &value); err != nil {
+			return fmt.Errorf("扫描配置数据失败: %v", err)
+		}
+
+		switch key {
+		case "trace_enabled":
+			t.SetEnabled(value == "true")
+		case "parse_content":
+			t.SetParseContent(value == "true")
+		}
+	}
+
+	return nil
+}
+
+// SaveConfigToDB 保存跟踪配置到数据库
+func (t *ProtocolTracer) SaveConfigToDB() error {
+	if t.db == nil {
+		return errors.New("数据库连接未初始化")
+	}
+
+	// 获取当前配置
+	enabled := t.IsEnabled()
+	parseContent := t.IsParseContentEnabled()
+
+	// 更新trace_enabled配置
+	_, err := t.db.Exec(
+		"UPDATE system_config SET config_value = ? WHERE config_key = 'trace_enabled'",
+		fmt.Sprintf("%t", enabled),
+	)
+	if err != nil {
+		return fmt.Errorf("更新trace_enabled配置失败: %v", err)
+	}
+
+	// 更新parse_content配置
+	_, err = t.db.Exec(
+		"UPDATE system_config SET config_value = ? WHERE config_key = 'parse_content'",
+		fmt.Sprintf("%t", parseContent),
+	)
+	if err != nil {
+		return fmt.Errorf("更新parse_content配置失败: %v", err)
+	}
+
+	return nil
 }

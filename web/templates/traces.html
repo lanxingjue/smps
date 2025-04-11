@@ -1,0 +1,545 @@
+<!-- web/templates/traces.html -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+        <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="#">SMPS管理系统</a>
+        <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="w-100"></div>
+        <div class="navbar-nav">
+            <div class="nav-item text-nowrap">
+                <a class="nav-link px-3" href="#" id="logout-btn">退出登录</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="row">
+            <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i> 仪表盘
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/sessions">
+                                <i class="bi bi-people"></i> 会话管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/configs">
+                                <i class="bi bi-gear"></i> 配置管理
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/traces">
+                                <i class="bi bi-search"></i> 协议跟踪
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">协议跟踪</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-btn">
+                                <i class="bi bi-arrow-clockwise"></i> 刷新
+                            </button>
+                            <button type="button" class="btn btn-sm btn-primary" id="settings-btn">
+                                <i class="bi bi-gear"></i> 跟踪设置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <strong>查询条件</strong>
+                    </div>
+                    <div class="card-body">
+                        <form id="search-form">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label for="start-time" class="form-label">开始时间</label>
+                                    <input type="datetime-local" class="form-control" id="start-time">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="end-time" class="form-label">结束时间</label>
+                                    <input type="datetime-local" class="form-control" id="end-time">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="source-addr" class="form-label">发送方号码</label>
+                                    <input type="text" class="form-control" id="source-addr">
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="dest-addr" class="form-label">接收方号码</label>
+                                    <input type="text" class="form-control" id="dest-addr">
+                                </div>
+                                <div class="col-12 text-end">
+                                    <button type="button" class="btn btn-primary" id="search-btn">查询</button>
+                                    <button type="button" class="btn btn-secondary" id="reset-btn">重置</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>方向</th>
+                                <th>消息ID</th>
+                                <th>命令</th>
+                                <th>发送方</th>
+                                <th>接收方</th>
+                                <th>系统ID</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="traces-table">
+                            <!-- 跟踪日志将在这里动态加载 -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <nav aria-label="Page navigation" class="mt-3">
+                    <ul class="pagination justify-content-center" id="pagination">
+                        <!-- 分页控件将在这里动态加载 -->
+                    </ul>
+                </nav>
+            </main>
+        </div>
+    </div>
+
+    <!-- 跟踪设置模态框 -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="settingsModalLabel">跟踪设置</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="settings-form">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="enable-trace">
+                            <label class="form-check-label" for="enable-trace">启用跟踪</label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="parse-content">
+                            <label class="form-check-label" for="parse-content">解析短信内容</label>
+                        </div>
+                        <div class="mb-3">
+                            <label for="traced-numbers" class="form-label">跟踪号码列表</label>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="new-number" placeholder="输入号码">
+                                <button class="btn btn-outline-secondary" type="button" id="add-number-btn">添加</button>
+                            </div>
+                            <select multiple class="form-select" id="traced-numbers" size="6">
+                                <!-- 跟踪号码列表将在这里动态加载 -->
+                            </select>
+                            <div class="d-grid gap-2 mt-2">
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="remove-number-btn">移除选中号码</button>
+                            </div>
+                            <small class="text-muted">注意：如果不设置跟踪号码，则跟踪所有号码。</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="save-settings-btn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情模态框 -->
+    <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailModalLabel">消息详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <strong>基本信息</strong>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tbody id="detail-basic-info">
+                                    <!-- 基本信息将在这里动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <strong>短信内容</strong>
+                        </div>
+                        <div class="card-body">
+                            <pre id="detail-content" class="p-3 bg-light"></pre>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/jquery.min.js"></script>
+    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // 当前页码和每页记录数
+            var currentPage = 1;
+            var pageSize = 20;
+            
+            // 检查是否已登录
+            var token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            // 加载跟踪日志
+            loadTraces();
+            
+            // 加载跟踪设置
+            loadSettings();
+            
+            // 刷新按钮点击事件
+            $('#refresh-btn').click(function() {
+                loadTraces();
+            });
+            
+            // 设置按钮点击事件
+            $('#settings-btn').click(function() {
+                $('#settingsModal').modal('show');
+            });
+            
+            // 查询按钮点击事件
+            $('#search-btn').click(function() {
+                currentPage = 1;
+                loadTraces();
+            });
+            
+            // 重置按钮点击事件
+            $('#reset-btn').click(function() {
+                $('#search-form')[0].reset();
+                currentPage = 1;
+                loadTraces();
+            });
+            
+            // 添加号码按钮点击事件
+            $('#add-number-btn').click(function() {
+                var number = $('#new-number').val().trim();
+                if (number) {
+                    addTracedNumber(number);
+                    $('#new-number').val('');
+                }
+            });
+            
+            // 移除号码按钮点击事件
+            $('#remove-number-btn').click(function() {
+                var selected = $('#traced-numbers option:selected');
+                if (selected.length > 0) {
+                    removeTracedNumber(selected.val());
+                }
+            });
+            
+            // 保存设置按钮点击事件
+            $('#save-settings-btn').click(function() {
+                saveSettings();
+            });
+            
+            // 退出登录按钮点击事件
+            $('#logout-btn').click(function(e) {
+                e.preventDefault();
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('tokenExpiration');
+                window.location.href = '/login';
+            });
+            
+            // 查看详情按钮点击事件代理
+            $(document).on('click', '.view-detail-btn', function() {
+                var traceData = $(this).data('trace');
+                showTraceDetail(traceData);
+            });
+            
+            // 分页按钮点击事件代理
+            $(document).on('click', '.page-link', function(e) {
+                e.preventDefault();
+                var page = $(this).data('page');
+                if (page) {
+                    currentPage = page;
+                    loadTraces();
+                }
+            });
+        });
+        
+        // 加载跟踪日志
+        function loadTraces() {
+            var params = {
+                limit: pageSize,
+                offset: (currentPage - 1) * pageSize
+            };
+            
+            // 添加查询条件
+            var startTime = $('#start-time').val();
+            var endTime = $('#end-time').val();
+            var sourceAddr = $('#source-addr').val();
+            var destAddr = $('#dest-addr').val();
+            
+            if (startTime) params.start = new Date(startTime).toISOString();
+            if (endTime) params.end = new Date(endTime).toISOString();
+            if (sourceAddr) params.source = sourceAddr;
+            if (destAddr) params.dest = destAddr;
+            
+            $.ajax({
+                url: '/api/traces',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                data: params,
+                success: function(data) {
+                    var tableHtml = '';
+                    
+                    if (data.length === 0) {
+                        tableHtml = '<tr><td colspan="8" class="text-center">暂无跟踪日志</td></tr>';
+                    } else {
+                        for (var i = 0; i < data.length; i++) {
+                            var trace = data[i];
+                            tableHtml += '<tr>';
+                            tableHtml += '<td>' + formatTime(trace.timestamp) + '</td>';
+                            tableHtml += '<td><span class="badge ' + (trace.direction === 'IN' ? 'bg-success' : 'bg-primary') + '">' + (trace.direction === 'IN' ? '接收' : '发送') + '</span></td>';
+                            tableHtml += '<td>' + trace.message_id + '</td>';
+                            tableHtml += '<td>' + trace.command_name + '</td>';
+                            tableHtml += '<td>' + (trace.source_addr || '-') + '</td>';
+                            tableHtml += '<td>' + (trace.dest_addr || '-') + '</td>';
+                            tableHtml += '<td>' + trace.system_id + '</td>';
+                            tableHtml += '<td>';
+                            tableHtml += '<button class="btn btn-sm btn-info view-detail-btn" data-trace=\'' + JSON.stringify(trace) + '\'><i class="bi bi-eye"></i></button>';
+                            tableHtml += '</td>';
+                            tableHtml += '</tr>';
+                        }
+                    }
+                    
+                    $('#traces-table').html(tableHtml);
+                    
+                    // 简单分页，实际项目中应该返回总记录数来计算总页数
+                    var totalPages = Math.ceil(100 / pageSize); // 假设总共有100条记录
+                    updatePagination(totalPages);
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('加载跟踪日志失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 更新分页控件
+        function updatePagination(totalPages) {
+            var paginationHtml = '';
+            
+            // 上一页
+            paginationHtml += '<li class="page-item ' + (currentPage === 1 ? 'disabled' : '') + '">';
+            paginationHtml += '<a class="page-link" href="#" data-page="' + (currentPage - 1) + '" aria-label="Previous">';
+            paginationHtml += '<span aria-hidden="true">&laquo;</span>';
+            paginationHtml += '</a></li>';
+            
+            // 页码
+            for (var i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    paginationHtml += '<li class="page-item active"><a class="page-link" href="#">' + i + '</a></li>';
+                } else {
+                    paginationHtml += '<li class="page-item"><a class="page-link" href="#" data-page="' + i + '">' + i + '</a></li>';
+                }
+            }
+            
+            // 下一页
+            paginationHtml += '<li class="page-item ' + (currentPage === totalPages ? 'disabled' : '') + '">';
+            paginationHtml += '<a class="page-link" href="#" data-page="' + (currentPage + 1) + '" aria-label="Next">';
+            paginationHtml += '<span aria-hidden="true">&raquo;</span>';
+            paginationHtml += '</a></li>';
+            
+            $('#pagination').html(paginationHtml);
+        }
+        
+        // 加载跟踪设置
+        function loadSettings() {
+            $.ajax({
+                url: '/api/traces/settings',
+                type: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function(data) {
+                    $('#enable-trace').prop('checked', data.enabled);
+                    $('#parse-content').prop('checked', data.parse_content);
+                    
+                    // 加载跟踪号码
+                    var tracedNumbersHtml = '';
+                    for (var i = 0; i < data.traced_numbers.length; i++) {
+                        tracedNumbersHtml += '<option value="' + data.traced_numbers[i] + '">' + data.traced_numbers[i] + '</option>';
+                    }
+                    $('#traced-numbers').html(tracedNumbersHtml);
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('加载跟踪设置失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 添加跟踪号码
+        function addTracedNumber(number) {
+            $.ajax({
+                url: '/api/traces/numbers',
+                type: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    number: number
+                }),
+                success: function() {
+                    // 添加到列表
+                    $('#traced-numbers').append('<option value="' + number + '">' + number + '</option>');
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('添加跟踪号码失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 移除跟踪号码
+        function removeTracedNumber(number) {
+            $.ajax({
+                url: '/api/traces/numbers/' + number,
+                type: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                success: function() {
+                    // 从列表中移除
+                    $('#traced-numbers option[value="' + number + '"]').remove();
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('移除跟踪号码失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 保存跟踪设置
+        function saveSettings() {
+            var settings = {
+                enabled: $('#enable-trace').is(':checked'),
+                parse_content: $('#parse-content').is(':checked')
+            };
+            
+            $.ajax({
+                url: '/api/traces/settings',
+                type: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                contentType: 'application/json',
+                data: JSON.stringify(settings),
+                success: function() {
+                    $('#settingsModal').modal('hide');
+                    alert('设置已保存');
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        window.location.href = '/login';
+                    } else {
+                        alert('保存设置失败: ' + xhr.responseJSON.error);
+                    }
+                }
+            });
+        }
+        
+        // 显示跟踪详情
+        function showTraceDetail(trace) {
+            var basicInfoHtml = '';
+            basicInfoHtml += '<tr><th width="150">时间</th><td>' + formatDateTime(trace.timestamp) + '</td></tr>';
+            basicInfoHtml += '<tr><th>方向</th><td>' + (trace.direction === 'IN' ? '接收' : '发送') + '</td></tr>';
+            basicInfoHtml += '<tr><th>消息ID</th><td>' + trace.message_id + '</td></tr>';
+            basicInfoHtml += '<tr><th>命令</th><td>' + trace.command_name + '</td></tr>';
+            basicInfoHtml += '<tr><th>发送方</th><td>' + (trace.source_addr || '-') + '</td></tr>';
+            basicInfoHtml += '<tr><th>接收方</th><td>' + (trace.dest_addr || '-') + '</td></tr>';
+            basicInfoHtml += '<tr><th>系统ID</th><td>' + trace.system_id + '</td></tr>';
+            basicInfoHtml += '<tr><th>状态码</th><td>' + trace.status + '</td></tr>';
+            
+            $('#detail-basic-info').html(basicInfoHtml);
+            
+            // 显示短信内容
+            $('#detail-content').text(trace.content || '无内容');
+            
+            $('#detailModal').modal('show');
+        }
+        
+        // 格式化时间为短格式
+        function formatTime(dateString) {
+            var date = new Date(dateString);
+            return padZero(date.getHours()) + ':' + 
+                   padZero(date.getMinutes()) + ':' + 
+                   padZero(date.getSeconds());
+        }
+        
+        // 格式化日期时间
+        function formatDateTime(dateString) {
+            var date = new Date(dateString);
+            return date.getFullYear() + '-' + 
+                   padZero(date.getMonth() + 1) + '-' + 
+                   padZero(date.getDate()) + ' ' + 
+                   padZero(date.getHours()) + ':' + 
+                   padZero(date.getMinutes()) + ':' + 
+                   padZero(date.getSeconds());
+        }
+        
+        // 补零
+        function padZero(num) {
+            return num < 10 ? '0' + num : num;
+        }
+    </script>
+</body>
+</html>
