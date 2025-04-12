@@ -119,7 +119,13 @@ func (a *Authenticator) loadAccountIPs(account *Account) error {
 
 // Authenticate 验证身份
 func (a *Authenticator) Authenticate(systemID, password string, clientIP net.IP, clientPort int) (bool, error) {
+	fmt.Println("Authenticate called with systemID:", systemID, "password:", password, "clientIP:", clientIP, "clientPort:", clientPort)
+
 	a.mu.RLock()
+	fmt.Println("Current accounts len:", len(a.accounts))
+	for _, account := range a.accounts {
+		fmt.Println("Account:", account.SystemID, "IPAddresses:", account.IPAddresses)
+	}
 	account, ok := a.accounts[systemID]
 	a.mu.RUnlock()
 

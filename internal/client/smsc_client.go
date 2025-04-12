@@ -18,17 +18,34 @@ import (
 	"smps/pkg/logger"
 )
 
+// // Config 客户端配置
+//
+//	type Config struct {
+//		Address           string        // SMSC服务器地址
+//		SystemID          string        // 系统ID
+//		Password          string        // 密码
+//		EnquireInterval   time.Duration // 心跳间隔
+//		ResponseTimeout   time.Duration // 响应超时
+//		ReconnectInterval time.Duration // 重连间隔
+//		MaxRetries        int           // 最大重试次数
+//		BackoffFactor     float64       // 退避系数
+//	}
+//
 // Config 客户端配置
 type Config struct {
-	Address           string        // SMSC服务器地址
-	SystemID          string        // 系统ID
-	Password          string        // 密码
-	EnquireInterval   time.Duration // 心跳间隔
-	ResponseTimeout   time.Duration // 响应超时
-	ReconnectInterval time.Duration // 重连间隔
-	MaxRetries        int           // 最大重试次数
-	BackoffFactor     float64       // 退避系数
+	Address           string        `yaml:"address"`            // SMSC服务器地址
+	SystemID          string        `yaml:"system_id"`          // 系统ID
+	Password          string        `yaml:"password"`           // 密码
+	EnquireInterval   time.Duration `yaml:"enquire_interval"`   // 心跳间隔
+	ResponseTimeout   time.Duration `yaml:"response_timeout"`   // 响应超时
+	ReconnectInterval time.Duration `yaml:"reconnect_interval"` // 重连间隔
+	MaxRetries        int           `yaml:"max_retries"`        // 最大重试次数
+	BackoffFactor     float64       `yaml:"backoff_factor"`     // 退避系数
 }
+
+// 添加消息处理函数和拦截器类型
+type MessageHandler func(msg []byte) error
+type MessageInterceptor func(msg []byte, isIncoming bool) []byte
 
 // SMSCClient SMSC客户端
 type SMSCClient struct {
@@ -50,10 +67,29 @@ type SMSCClient struct {
 		reconnectCount   uint64
 		errors           uint64
 	}
+	// ...现有字段保持不变
+
+	messageHandler      MessageHandler
+	messageInterceptors []MessageInterceptor
 }
 
 // NewSMSCClient 创建新的SMSC客户端
 func NewSMSCClient(config *Config) *SMSCClient {
+	// 验证配置值
+	if config.EnquireInterval <= 0 {
+		config.EnquireInterval = 30 * time.Second
+		logger.Warning("心跳间隔配置无效(<=0)，设置为默认值30秒")
+	}
+
+	if config.ResponseTimeout <= 0 {
+		config.ResponseTimeout = 5 * time.Second
+		logger.Warning("响应超时配置无效(<=0)，设置为默认值5秒")
+	}
+
+	if config.ReconnectInterval <= 0 {
+		config.ReconnectInterval = 5 * time.Second
+		logger.Warning("重连间隔配置无效(<=0)，设置为默认值5秒")
+	}
 	return &SMSCClient{
 		config:      config,
 		status:      0,
@@ -253,10 +289,17 @@ func (c *SMSCClient) readWithTimeout(timeout time.Duration) (*protocol.Message, 
 func (c *SMSCClient) readLoop() {
 	logger.Info("开始消息读取循环")
 	defer c.close()
+	// // 确保EnquireInterval大于0
+	// interval := c.config.EnquireInterval
+	// if interval <= 0 {
+	// 	interval = 30 * time.Second // 使用默认值30秒
+	// 	logger.Warning("心跳间隔值无效(<=0)，使用默认值30秒")
+	// }
 
 	var (
 		N1        int                                        // 链路查询失败计数器
 		heartbeat = time.NewTicker(c.config.EnquireInterval) //创建心跳计时器
+		// heartbeat = time.NewTicker(interval) // 使用验证后的间隔创建计时器
 	)
 	defer heartbeat.Stop()
 
@@ -313,7 +356,21 @@ func (c *SMSCClient) readLoop() {
 			case protocol.DELIVER_SM:
 				logger.Info(fmt.Sprintf("收到DELIVER_SM消息，序列号: %d", msg.Header.SequenceNumber))
 
-				// 这里应该分发给处理器，但目前简单直接回复
+				// 调用消息处理器处理DELIVER_SM消息
+				if c.messageHandler != nil {
+					// 应用拦截器
+					rawMsg := msg.Bytes()
+					for _, interceptor := range c.messageInterceptors {
+						rawMsg = interceptor(rawMsg, true)
+					}
+
+					// 调用处理函数
+					if err := c.messageHandler(rawMsg); err != nil {
+						logger.Error(fmt.Sprintf("处理DELIVER_SM消息失败: %v", err))
+					}
+				}
+
+				// 发送响应
 				respMsg := protocol.CreateDeliverSMResponse(msg.Header.SequenceNumber, protocol.SM_OK)
 				if err := c.sendMessage(respMsg); err != nil {
 					logger.Error(fmt.Sprintf("发送DELIVER_SM响应失败: %v", err))
@@ -391,3 +448,34 @@ func (c *SMSCClient) GetStats() map[string]uint64 {
 		"errors":            atomic.LoadUint64(&c.stats.errors),
 	}
 }
+
+// 添加 SetMessageHandler 方法
+func (c *SMSCClient) SetMessageHandler(handler MessageHandler) {
+	c.messageHandler = handler
+}
+
+// 添加 AddMessageInterceptor 方法
+func (c *SMSCClient) AddMessageInterceptor(interceptor MessageInterceptor) {
+	c.messageInterceptors = append(c.messageInterceptors, interceptor)
+}
+
+// // 在每次收到消息时应用拦截器
+// func (c *SMSCClient) applyInterceptors(msg []byte, isIncoming bool) []byte {
+// 	result := msg
+// 	for _, interceptor := range c.messageInterceptors {
+// 		result = interceptor(result, isIncoming)
+// 	}
+// 	return result
+// }
+
+// // 确保处理接收消息的方法调用 messageHandler
+// func (c *SMSCClient) handleIncomingMessage(msg []byte) {
+// 	if c.messageHandler != nil {
+// 		// 先应用拦截器
+// 		processedMsg := c.applyInterceptors(msg, true)
+// 		// 调用处理函数
+// 		if err := c.messageHandler(processedMsg); err != nil {
+// 			logger.Error(fmt.Sprintf("处理消息失败: %v", err))
+// 		}
+// 	}
+// }

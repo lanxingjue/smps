@@ -22,10 +22,10 @@ type ConnectionPool struct {
 
 // poolConn 池连接
 type poolConn struct {
-	conn      net.Conn
-	pool      *ConnectionPool
-	createdAt time.Time
-	lastUsed  time.Time
+	conn net.Conn
+	pool *ConnectionPool
+	// createdAt time.Time
+	lastUsed time.Time
 }
 
 // NewConnectionPool 创建新的连接池

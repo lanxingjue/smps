@@ -1,15 +1,105 @@
-server:
-  listen_address: ":5010"
+# SMPS短信代理服务平台配置
+version: "1.0.0"
+
+# 日志配置
+log:
+  log_file: "logs/smps.log"
+
+# 数据库配置
+database:
+  driver: "mysql"
+  host: "localhost"
+  port: 3306
+  username: "root"
+  password: "wang"
+  database: "smps"
+  parameters: "parseTime=true&charset=utf8mb4&loc=Local"
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime: 3600
+
+# 认证配置
+auth:
+  ip_whitelist: false
+
+# SMSC客户端配置
+smsc:
+  address: "127.0.0.1:2775"
+  system_id: "admin"
+  password: "admin123"
+  enquire_interval: 60  # 心跳间隔(秒)，确保大于0
+  response_timeout: 5   # 响应超时(秒)
+  reconnect_interval: 5 # 重连间隔(秒)
+  max_retries: 5
+  backoff_factor: 1.5
+
+# SMMC服务端配置
+smmc:
+  listen_address: "0.0.0.0:5016"  # 正确设置监听地址
   max_connections: 100
+  read_timeout: 30                 # 秒
+  write_timeout: 30                # 秒
+  heartbeat_interval: 60           # 秒
+  heartbeat_miss_threshold: 3
 
-client:
-  smsc_address: "127.0.0.1:2775"
-  system_id: "test_client"
-  password: "test123"
-  reconnect_interval: 5s
-  max_retries: 3
-  backoff_factor: 2
+# 消息分发器配置
+dispatcher:
+  queue_size: 10000
+  workers: 10
+  timeout: 2
 
-protocol:
-  enquire_interval: 30s
-  response_timeout: 10s
+# 响应处理器配置
+processor:
+  message_timeout: 2    # 消息处理超时(秒)
+  cleanup_interval: 10  # 清理间隔(秒)
+  max_trackers: 10000   # 最大跟踪器数量
+
+# Web管理界面配置
+web:
+  enabled: true
+  listen_addr: ":8080"
+  static_dir: "web/assets"
+  templates_dir: "web/templates"
+  session_ttl: 86400
+  debug: false
+
+# 高可用配置
+ha:
+  enabled: false
+  node_id: "node1"
+  initial_role: "slave"
+  cluster_id: "smps-cluster"
+  nodes:
+    - id: "node1"
+      address: "127.0.0.1"
+      management_port: 9101
+      sync_port: 9201
+      priority: 100
+    - id: "node2"
+      address: "127.0.0.2"
+      management_port: 9102
+      sync_port: 9202
+      priority: 90
+  heartbeat_interval: 1
+  heartbeat_timeout: 3
+  election_timeout: 5
+  election_priority: 100
+  auto_failover: true
+  failover_wait_time: 10
+  election_method: "quorum"
+  quorum_size: 2
+  vip:
+    enabled: false
+    address: "192.168.1.100"
+    interface: "eth0"
+    netmask: "24"
+
+# 性能监控配置
+performance:
+  enabled: true
+  cpu_threshold: 80.0
+  mem_threshold: 80.0
+  check_interval: 30
+  output_dir: "profiles"
+  profiler_http: true
+  http_addr: ":6060"

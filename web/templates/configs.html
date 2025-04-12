@@ -180,12 +180,12 @@
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
-            // 检查是否已登录
-            var token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = '/login';
-                return;
-            }
+            // // 检查是否已登录
+            // var token = localStorage.getItem('token');
+            // if (!token) {
+            //     window.location.href = '/login';
+            //     return;
+            // }
             
             // 加载配置列表
             loadConfigs();
@@ -237,9 +237,9 @@
             $.ajax({
                 url: '/api/configs',
                 type: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
+                // headers: {
+                //     'Authorization': 'Bearer ' + localStorage.getItem('token')
+                // },
                 success: function(data) {
                     var tableHtml = '';
                     
@@ -281,9 +281,9 @@
             $.ajax({
                 url: '/api/configs/' + configId,
                 type: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
+                // headers: {
+                //     'Authorization': 'Bearer ' + localStorage.getItem('token')
+                // },
                 success: function(data) {
                     $('#configFormModalLabel').text('编辑网元配置');
                     $('#config-id').val(data.id);
@@ -339,9 +339,9 @@
             $.ajax({
                 url: url,
                 type: method,
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
+                // headers: {
+                //     'Authorization': 'Bearer ' + localStorage.getItem('token')
+                // },
                 contentType: 'application/json',
                 data: JSON.stringify(configData),
                 success: function() {
@@ -364,9 +364,9 @@
             $.ajax({
                 url: '/api/configs/' + configId,
                 type: 'DELETE',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
+                // headers: {
+                //     'Authorization': 'Bearer ' + localStorage.getItem('token')
+                // },
                 success: function() {
                     loadConfigs();
                     alert('配置已删除');

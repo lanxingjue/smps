@@ -13,19 +13,33 @@ import (
 	"time"
 
 	"smps/internal/auth"
+	// "smps/internal/dispatcher"
 	"smps/internal/protocol"
 	"smps/pkg/logger"
 )
 
 // ServerConfig 服务器配置
+//
+//	type ServerConfig struct {
+//		ListenAddress          string        // 监听地址
+//		MaxConnections         int           // 最大连接数
+//		ReadTimeout            time.Duration // 读取超时
+//		WriteTimeout           time.Duration // 写入超时
+//		HeartbeatInterval      time.Duration // 心跳间隔
+//		HeartbeatMissThreshold int           // 心跳丢失阈值
+//	}
 type ServerConfig struct {
-	ListenAddress          string        // 监听地址
-	MaxConnections         int           // 最大连接数
-	ReadTimeout            time.Duration // 读取超时
-	WriteTimeout           time.Duration // 写入超时
-	HeartbeatInterval      time.Duration // 心跳间隔
-	HeartbeatMissThreshold int           // 心跳丢失阈值
+	ListenAddress          string        `yaml:"listen_address"`
+	MaxConnections         int           `yaml:"max_connections"`
+	ReadTimeout            time.Duration `yaml:"read_timeout"`
+	WriteTimeout           time.Duration `yaml:"write_timeout"`
+	HeartbeatInterval      time.Duration `yaml:"heartbeat_interval"`
+	HeartbeatMissThreshold int           `yaml:"heartbeat_miss_threshold"`
 }
+
+// 添加消息处理函数和拦截器类型
+type MessageHandler func(msg []byte) error
+type MessageInterceptor func(msg []byte, isIncoming bool) []byte
 
 // Server SMMC服务器
 type Server struct {
@@ -46,6 +60,10 @@ type Server struct {
 	}
 	// 同步
 	wg sync.WaitGroup
+	// ...现有字段保持不变
+
+	messageHandler      MessageHandler
+	messageInterceptors []MessageInterceptor
 }
 
 // NewServer 创建新的服务器
@@ -60,6 +78,26 @@ func NewServer(config *ServerConfig, authenticator *auth.Authenticator) *Server 
 // Start 启动服务器
 func (s *Server) Start(ctx context.Context) error {
 	s.ctx, s.cancel = context.WithCancel(ctx)
+	// 验证配置
+	if s.config.HeartbeatInterval <= 0 {
+		s.config.HeartbeatInterval = 30 * time.Second // 设置默认值
+		logger.Warning("心跳间隔配置无效(<=0)，设置为默认值30秒")
+	}
+
+	if s.config.ReadTimeout <= 0 {
+		s.config.ReadTimeout = 5 * time.Second
+		logger.Warning("读取超时配置无效(<=0)，设置为默认值5秒")
+	}
+
+	if s.config.WriteTimeout <= 0 {
+		s.config.WriteTimeout = 5 * time.Second
+		logger.Warning("写入超时配置无效(<=0)，设置为默认值5秒")
+	}
+
+	if s.config.ListenAddress == "" {
+		s.config.ListenAddress = "0.0.0.0:2775" // 设置默认值
+		logger.Warning("监听地址为空，设置为默认值0.0.0.0:2775")
+	}
 
 	// 创建监听器
 	listener, err := net.Listen("tcp", s.config.ListenAddress)
@@ -590,3 +628,169 @@ func (s *Server) SendMessage(session *Session, msg *protocol.Message) error {
 
 	return nil
 }
+
+// 添加 SetMessageHandler 方法
+func (s *Server) SetMessageHandler(handler MessageHandler) {
+	s.messageHandler = handler
+}
+
+// 添加 AddMessageInterceptor 方法
+func (s *Server) AddMessageInterceptor(interceptor MessageInterceptor) {
+	s.messageInterceptors = append(s.messageInterceptors, interceptor)
+}
+
+// // HandleMessage 处理来自分发器的消息
+// func (s *Server) HandleMessage(msg *protocol.Message) error {
+// 	// 对于DELIVER_SM消息，需要转发给客户端
+// 	if msg.Header.CommandID == protocol.DELIVER_SM {
+// 		logger.Info(fmt.Sprintf("收到DELIVER_SM消息，序列号: %d，准备转发给客户端",
+// 			msg.Header.SequenceNumber))
+
+// 		// 获取所有活跃会话
+// 		sessions := s.sessionMgr.GetActiveSessions()
+// 		if len(sessions) == 0 {
+// 			logger.Warning("无活跃会话，无法转发DELIVER_SM消息")
+// 			return fmt.Errorf("无活跃会话")
+// 		}
+
+// 		// 解析消息内容以进行日志记录
+// 		sourceAddr, destAddr, content, _ := protocol.ParseMessageContent(msg)
+// 		logger.Info(fmt.Sprintf("转发短信 [序列号: %d]:\n 发送方: %s\n 接收方: %s\n 内容: %s",
+// 			msg.Header.SequenceNumber, sourceAddr, destAddr, content))
+
+// 		// 遍历会话并转发消息
+// 		var forwardErrors []error
+// 		var forwardedCount int
+
+// 		for _, session := range sessions {
+// 			// 只向连接状态的客户端转发
+// 			if session.Status == protocol.Session_Connected {
+// 				// 创建新消息（使用新的序列号）
+// 				newMsg := protocol.NewMessage(
+// 					msg.Header.CommandID,
+// 					msg.Header.CommandStatus,
+// 					session.NextSequence(),
+// 					msg.Payload,
+// 				)
+
+// 				// 添加原消息的TLV参数
+// 				for _, tlv := range msg.TLVs {
+// 					newMsg.AddTLV(tlv.Tag, tlv.Value)
+// 				}
+
+// 				// 发送消息
+// 				if err := s.SendMessage(session, newMsg); err != nil {
+// 					logger.Error(fmt.Sprintf("转发DELIVER_SM消息到会话 %d 失败: %v", session.ID, err))
+// 					forwardErrors = append(forwardErrors, err)
+// 				} else {
+// 					forwardedCount++
+// 					logger.Info(fmt.Sprintf("成功转发DELIVER_SM消息到会话 %d", session.ID))
+// 				}
+// 			}
+// 		}
+
+// 		// 检查是否至少转发给了一个客户端
+// 		if forwardedCount == 0 {
+// 			return fmt.Errorf("消息未能转发给任何客户端: %v", forwardErrors)
+// 		}
+
+// 		return nil
+// 	}
+
+// 	// 其他类型的消息交给messageHandler处理
+// 	if s.messageHandler != nil {
+// 		// 转换消息为字节数组
+// 		rawMsg := msg.Bytes()
+
+// 		// 应用拦截器
+// 		for _, interceptor := range s.messageInterceptors {
+// 			rawMsg = interceptor(rawMsg, true)
+// 		}
+
+// 		// 调用处理函数
+// 		return s.messageHandler(rawMsg)
+// 	}
+
+//		return nil
+//	}
+//
+// HandleMessage 处理来自分发器的消息
+func (s *Server) HandleMessage(msg *protocol.Message) error {
+	// 对于DELIVER_SM消息，需要转发给SMMC客户端
+	if msg.Header.CommandID == protocol.DELIVER_SM {
+		logger.Info(fmt.Sprintf("准备将DELIVER_SM消息转发给已连接的SMMC客户端，序列号: %d",
+			msg.Header.SequenceNumber))
+
+		// 获取所有活跃会话
+		sessions := s.sessionMgr.GetActiveSessions()
+		if len(sessions) == 0 {
+			logger.Warning("无活跃会话，无法转发DELIVER_SM消息")
+			return fmt.Errorf("无活跃会话")
+		}
+
+		// 获取消息内容用于日志
+		sourceAddr, destAddr, content, _ := protocol.ParseMessageContent(msg)
+		logger.Info(fmt.Sprintf("转发短信 [序列号: %d] 发送方: %s, 接收方: %s, 内容: %s",
+			msg.Header.SequenceNumber, sourceAddr, destAddr, content))
+
+		// 转发计数器
+		var forwardedCount int
+
+		// 遍历会话并转发消息
+		for _, session := range sessions {
+			// 只向已连接的客户端转发
+			if session.Status == protocol.Session_Connected {
+				// 创建新消息（使用新的序列号）
+				newMsg := protocol.NewMessage(
+					msg.Header.CommandID,
+					msg.Header.CommandStatus,
+					session.NextSequence(),
+					msg.Payload,
+				)
+
+				// 发送消息
+				if err := s.SendMessage(session, newMsg); err != nil {
+					logger.Error(fmt.Sprintf("转发消息到会话 %d 失败: %v", session.ID, err))
+				} else {
+					forwardedCount++
+					logger.Info(fmt.Sprintf("成功转发DELIVER_SM消息到会话 %d (系统ID: %s)",
+						session.ID, session.SystemID))
+				}
+			}
+		}
+
+		logger.Info(fmt.Sprintf("DELIVER_SM消息已转发给 %d 个客户端", forwardedCount))
+		return nil
+	}
+
+	// 其他类型的消息交给messageHandler处理
+	if s.messageHandler != nil {
+		// 转换消息为字节数组
+		rawMsg := msg.Bytes()
+
+		// 应用拦截器
+		for _, interceptor := range s.messageInterceptors {
+			rawMsg = interceptor(rawMsg, true)
+		}
+
+		// 调用处理函数
+		return s.messageHandler(rawMsg)
+	}
+
+	return nil
+}
+
+// 添加Handle方法
+func (s *Server) Handle(ctx context.Context, msg *protocol.Message) error {
+	return s.HandleMessage(msg)
+}
+
+// 如果没有HandlerName方法，也需要添加
+func (s *Server) HandlerName() string {
+	return "SMMC服务器"
+}
+
+// // AddHandler 添加消息处理器
+// func (s *Server) AddHandler(handler dispatcher.MessageHandler) {
+// 	logger.Info(fmt.Sprintf("向服务器添加处理器: %s", handler.HandlerName()))
+// }

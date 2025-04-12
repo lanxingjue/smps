@@ -3,6 +3,7 @@ package ha
 
 import (
 	"fmt"
+	"os/exec"
 	"sync"
 	"time"
 
@@ -310,17 +311,21 @@ func (n *Node) acquireVIP() error {
 	logger.Info(fmt.Sprintf("节点 %s 正在获取VIP: %s", n.id, n.config.VIPConfig.Address))
 
 	// 具体实现可以通过执行ip命令或调用网络接口
-	// 这里简化为通过系统调用执行命令
-	cmd := fmt.Sprintf("ip addr add %s/%s dev %s",
+	cmdStr := fmt.Sprintf("ip addr add %s/%s dev %s",
 		n.config.VIPConfig.Address,
 		n.config.VIPConfig.Netmask,
 		n.config.VIPConfig.Interface)
 
-	// 执行命令（简化实现）
-	// exec.Command("sh", "-c", cmd).Run()
+	// 执行命令
+	if _, err := exec.Command("sh", "-c", cmdStr).Output(); err != nil {
+		return fmt.Errorf("执行获取VIP命令失败: %v", err)
+	}
 
 	// 发送免费ARP
-	// exec.Command("arping", "-U", "-I", n.config.VIPConfig.Interface, n.config.VIPConfig.Address, "-c", "3").Run()
+	arpCmd := fmt.Sprintf("arping -U -I %s %s -c 3",
+		n.config.VIPConfig.Interface,
+		n.config.VIPConfig.Address)
+	exec.Command("sh", "-c", arpCmd).Run()
 
 	logger.Info(fmt.Sprintf("节点 %s 已成功获取VIP: %s", n.id, n.config.VIPConfig.Address))
 	return nil
@@ -336,13 +341,15 @@ func (n *Node) releaseVIP() error {
 	logger.Info(fmt.Sprintf("节点 %s 正在释放VIP: %s", n.id, n.config.VIPConfig.Address))
 
 	// 具体实现可以通过执行ip命令或调用网络接口
-	cmd := fmt.Sprintf("ip addr del %s/%s dev %s",
+	cmdStr := fmt.Sprintf("ip addr del %s/%s dev %s",
 		n.config.VIPConfig.Address,
 		n.config.VIPConfig.Netmask,
 		n.config.VIPConfig.Interface)
 
-	// 执行命令（简化实现）
-	// exec.Command("sh", "-c", cmd).Run()
+	// 执行命令
+	if _, err := exec.Command("sh", "-c", cmdStr).Output(); err != nil {
+		return fmt.Errorf("执行释放VIP命令失败: %v", err)
+	}
 
 	logger.Info(fmt.Sprintf("节点 %s 已成功释放VIP: %s", n.id, n.config.VIPConfig.Address))
 	return nil

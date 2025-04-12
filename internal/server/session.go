@@ -3,7 +3,6 @@ package server
 
 import (
 	"net"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -17,7 +16,7 @@ type Session struct {
 	CreatedAt    time.Time
 	LastActivity int64
 	sequenceNum  uint32
-	lock         sync.Mutex
+	// lock         sync.Mutex
 
 	// 增强字段
 	Protocol      string

@@ -215,12 +215,12 @@
             var currentPage = 1;
             var pageSize = 20;
             
-            // 检查是否已登录
-            var token = localStorage.getItem('token');
-            if (!token) {
-                window.location.href = '/login';
-                return;
-            }
+            // // 检查是否已登录
+            // var token = localStorage.getItem('token');
+            // if (!token) {
+            //     window.location.href = '/login';
+            //     return;
+            // }
             
             // 加载跟踪日志
             loadTraces();
@@ -320,9 +320,9 @@
             $.ajax({
                 url: '/api/traces',
                 type: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
+                // headers: {
+                //     'Authorization': 'Bearer ' + localStorage.getItem('token')
+                // },
                 data: params,
                 success: function(data) {
                     var tableHtml = '';
@@ -396,9 +396,9 @@
             $.ajax({
                 url: '/api/traces/settings',
                 type: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
+                // headers: {
+                //     'Authorization': 'Bearer ' + localStorage.getItem('token')
+                // },
                 success: function(data) {
                     $('#enable-trace').prop('checked', data.enabled);
                     $('#parse-content').prop('checked', data.parse_content);
@@ -425,9 +425,9 @@
             $.ajax({
                 url: '/api/traces/numbers',
                 type: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
+                // headers: {
+                //     'Authorization': 'Bearer ' + localStorage.getItem('token')
+                // },
                 contentType: 'application/json',
                 data: JSON.stringify({
                     number: number
@@ -451,9 +451,9 @@
             $.ajax({
                 url: '/api/traces/numbers/' + number,
                 type: 'DELETE',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
+                // headers: {
+                //     'Authorization': 'Bearer ' + localStorage.getItem('token')
+                // },
                 success: function() {
                     // 从列表中移除
                     $('#traced-numbers option[value="' + number + '"]').remove();
@@ -478,9 +478,9 @@
             $.ajax({
                 url: '/api/traces/settings',
                 type: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
+                // headers: {
+                //     'Authorization': 'Bearer ' + localStorage.getItem('token')
+                // },
                 contentType: 'application/json',
                 data: JSON.stringify(settings),
                 success: function() {

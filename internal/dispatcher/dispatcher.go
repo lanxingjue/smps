@@ -131,19 +131,57 @@ func (d *MessageDispatcher) RegisterProcessor(processor MessageProcessor) {
 	d.processors = append(d.processors, processor)
 }
 
+// // Dispatch 异步分发消息
+// func (d *MessageDispatcher) Dispatch(msg *protocol.Message) {
+// 	// 检查是否已启动
+// 	if !d.isRunning {
+// 		logger.Error("分发器未启动，无法分发消息")
+// 		return
+// 	}
+
+//		// 将消息放入队列
+//		if err := d.msgQueue.Enqueue(msg); err != nil {
+//			logger.Error(fmt.Sprintf("消息入队失败: %v", err))
+//			atomic.AddUint64(&d.stats.errors, 1)
+//		}
+//	}
+//
 // Dispatch 异步分发消息
-func (d *MessageDispatcher) Dispatch(msg *protocol.Message) {
+func (d *MessageDispatcher) Dispatch(msg interface{}) error {
 	// 检查是否已启动
 	if !d.isRunning {
 		logger.Error("分发器未启动，无法分发消息")
-		return
+		return fmt.Errorf("分发器未启动")
+	}
+
+	var protocolMsg *protocol.Message
+
+	// 根据消息类型进行处理
+	switch m := msg.(type) {
+	case *protocol.Message:
+		protocolMsg = m
+	case []byte:
+		// 将字节数组转换为Message对象
+		var err error
+		protocolMsg, err = protocol.ParseMessage(m)
+		if err != nil {
+			logger.Error(fmt.Sprintf("解析消息失败: %v", err))
+			atomic.AddUint64(&d.stats.errors, 1)
+			return err
+		}
+	default:
+		logger.Error(fmt.Sprintf("不支持的消息类型: %T", msg))
+		return fmt.Errorf("不支持的消息类型: %T", msg)
 	}
 
 	// 将消息放入队列
-	if err := d.msgQueue.Enqueue(msg); err != nil {
+	if err := d.msgQueue.Enqueue(protocolMsg); err != nil {
 		logger.Error(fmt.Sprintf("消息入队失败: %v", err))
 		atomic.AddUint64(&d.stats.errors, 1)
+		return err
 	}
+
+	return nil
 }
 
 // DispatchSync 同步分发消息

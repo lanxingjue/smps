@@ -184,7 +184,7 @@ func (e *Election) requestVoteFromPeer(id string, msg ElectionMessage) {
 	}
 
 	// 连接对等节点
-	addr := fmt.Sprintf("%s:%d", peerConfig.Address, peerConfig.ManagementPort)
+	addr := net.JoinHostPort(peerConfig.Address, fmt.Sprintf("%d", peerConfig.ManagementPort))
 	conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
 	if err != nil {
 		logger.Error(fmt.Sprintf("连接选举节点失败: %s, %v", addr, err))

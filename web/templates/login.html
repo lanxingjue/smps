@@ -1,39 +1,32 @@
-<!-- web/templates/login.html -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .title }}</title>
+    <title>登录 - SMPS管理系统</title>
     <link rel="stylesheet" href="/static/css/bootstrap.min.css">
     <link rel="stylesheet" href="/static/css/login.css">
 </head>
 <body class="bg-light">
     <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-6 col-lg-5">
-                <div class="login-form mt-5 p-4 bg-white shadow rounded">
-                    <h2 class="text-center mb-4">SMPS管理系统</h2>
-                    <div class="alert alert-danger d-none" id="login-error"></div>
-                    <form id="login-form">
-                        <div class="form-group mb-3">
-                            <label for="username">用户名</label>
-                            <input type="text" class="form-control" id="username" name="username" required autocomplete="username">
-                        </div>
-                        <div class="form-group mb-3">
-                            <label for="password">密码</label>
-                            <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
-                        </div>
-                        <div class="form-group mb-3">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="remember-me">
-                                <label class="form-check-label" for="remember-me">记住我</label>
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <div class="card shadow login-form mt-5">
+                    <div class="card-body p-5">
+                        <h2 class="text-center mb-4">SMPS管理系统</h2>
+                        <form id="login-form">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">用户名</label>
+                                <input type="text" class="form-control" id="username" required>
                             </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary btn-block w-100">登录</button>
-                    </form>
-                    <div class="text-center mt-3">
-                        <small class="text-muted">SMPS短信代理服务平台 &copy; 2025</small>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">密码</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">登录</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -44,16 +37,12 @@
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#login-form').on('submit', function(e) {
+            $('#login-form').submit(function(e) {
                 e.preventDefault();
                 
                 var username = $('#username').val();
                 var password = $('#password').val();
                 
-                // 隐藏错误信息
-                $('#login-error').addClass('d-none');
-                
-                // 发送登录请求
                 $.ajax({
                     url: '/api/auth/login',
                     type: 'POST',
@@ -63,30 +52,19 @@
                         password: password
                     }),
                     success: function(response) {
-                        // 保存token到localStorage
-                        localStorage.setItem('token', response.token);
-                        localStorage.setItem('user', JSON.stringify(response.user));
+                        console.log('登录成功:', response);
                         
-                        // 如果选择了记住我，保存30天
-                        if ($('#remember-me').is(':checked')) {
-                            var expirationDate = new Date();
-                            expirationDate.setDate(expirationDate.getDate() + 30);
-                            localStorage.setItem('tokenExpiration', expirationDate.toISOString());
-                        } else {
-                            // 否则在会话结束时过期
-                            localStorage.setItem('tokenExpiration', '');
-                        }
-                        
-                        // 跳转到首页
+                        // // 保存令牌到localStorage
+                        // localStorage.setItem('token', response.token);
+                        // localStorage.setItem('user', JSON.stringify(response.user));
+                        // localStorage.setItem('tokenExpiration', response.expire);
+
+                        // 重定向到仪表盘
                         window.location.href = '/dashboard';
                     },
                     error: function(xhr) {
-                        // 显示错误信息
-                        var errorMsg = '登录失败';
-                        if (xhr.responseJSON && xhr.responseJSON.error) {
-                            errorMsg = xhr.responseJSON.error;
-                        }
-                        $('#login-error').text(errorMsg).removeClass('d-none');
+                        console.error('登录失败:', xhr.responseJSON);
+                        alert('登录失败: ' + (xhr.responseJSON ? xhr.responseJSON.error : '未知错误'));
                     }
                 });
             });

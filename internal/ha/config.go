@@ -37,6 +37,9 @@ const (
 
 	// StateSwitching 切换中
 	StateSwitching NodeState = "SWITCHING"
+
+	// StateUnknown 未知
+	StateUnknown NodeState = "UNKNOWN"
 )
 
 // ElectionState 选举状态
@@ -72,6 +75,9 @@ const (
 
 // Config 高可用配置
 type Config struct {
+
+	// 添加启用字段
+	Enabled bool // 是否启用高可用功能
 	// 本节点ID
 	NodeID string
 
@@ -169,6 +175,7 @@ type Callbacks struct {
 // NewConfig 创建默认配置
 func NewConfig() *Config {
 	return &Config{
+		Enabled:           false, // 默认不启用
 		NodeID:            "node1",
 		InitialRole:       RoleSlave,
 		ClusterID:         "smps-cluster",

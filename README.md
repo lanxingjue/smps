@@ -245,3 +245,8 @@ smps/
 │   │   └── storage.go        # 跟踪数据存储
 
 ——————————
+
+
+
+go build -o smps cmd/server/main.go
+./smps

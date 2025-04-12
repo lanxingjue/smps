@@ -58,39 +58,46 @@ func SetupRoutes(
 		})
 	})
 
-	// 需要认证的页面路由
-	authorized := engine.Group("/")
-	authorized.Use(jwtMiddleware)
-	{
-		authorized.GET("/dashboard", func(c *gin.Context) {
-			c.HTML(200, "dashboard.html", gin.H{
-				"title": "仪表盘 - SMPS管理系统",
-				"user":  c.GetString("username"),
-			})
-		})
+	// // 需要认证的页面路由
+	// authorized := engine.Group("/")
+	// authorized.Use(jwtMiddleware)
+	// // {
+	// 	authorized.GET("/dashboard", func(c *gin.Context) {
+	// 		c.HTML(200, "dashboard.html", gin.H{
+	// 			"title": "仪表盘 - SMPS管理系统",
+	// 			"user":  c.GetString("username"),
+	// 		})
+	// 	})
 
-		authorized.GET("/sessions", func(c *gin.Context) {
-			c.HTML(200, "sessions.html", gin.H{
-				"title": "会话管理 - SMPS管理系统",
-				"user":  c.GetString("username"),
-			})
-		})
+	// 	authorized.GET("/sessions", func(c *gin.Context) {
+	// 		c.HTML(200, "sessions.html", gin.H{
+	// 			"title": "会话管理 - SMPS管理系统",
+	// 			"user":  c.GetString("username"),
+	// 		})
+	// 	})
 
-		authorized.GET("/configs", func(c *gin.Context) {
-			c.HTML(200, "configs.html", gin.H{
-				"title": "配置管理 - SMPS管理系统",
-				"user":  c.GetString("username"),
-			})
-		})
+	// 	authorized.GET("/configs", func(c *gin.Context) {
+	// 		c.HTML(200, "configs.html", gin.H{
+	// 			"title": "配置管理 - SMPS管理系统",
+	// 			"user":  c.GetString("username"),
+	// 		})
+	// 	})
 
-		authorized.GET("/traces", func(c *gin.Context) {
-			c.HTML(200, "traces.html", gin.H{
-				"title": "协议跟踪 - SMPS管理系统",
-				"user":  c.GetString("username"),
-			})
-		})
-	}
+	// 	authorized.GET("/traces", func(c *gin.Context) {
+	// 		c.HTML(200, "traces.html", gin.H{
+	// 			"title": "协议跟踪 - SMPS管理系统",
+	// 			"user":  c.GetString("username"),
+	// 		})
+	// 	})
+	// }
 
+	// 不再使用认证中间件
+	engine.GET("/dashboard", func(c *gin.Context) {
+		c.HTML(200, "dashboard.html", gin.H{
+			"title": "仪表盘 - SMPS管理系统",
+			"user":  "admin", // 直接设置默认用户
+		})
+	})
 	// API路由
 	api := engine.Group("/api")
 	{
@@ -141,4 +148,28 @@ func SetupRoutes(
 			}
 		}
 	}
+
+	// 会话管理页面
+	engine.GET("/sessions", func(c *gin.Context) {
+		c.HTML(200, "sessions.html", gin.H{
+			"title": "会话管理 - SMPS管理系统",
+			"user":  "admin",
+		})
+	})
+
+	// 配置管理页面
+	engine.GET("/configs", func(c *gin.Context) {
+		c.HTML(200, "configs.html", gin.H{
+			"title": "配置管理 - SMPS管理系统",
+			"user":  "admin",
+		})
+	})
+
+	// 协议跟踪页面
+	engine.GET("/traces", func(c *gin.Context) {
+		c.HTML(200, "traces.html", gin.H{
+			"title": "协议跟踪 - SMPS管理系统",
+			"user":  "admin",
+		})
+	})
 }

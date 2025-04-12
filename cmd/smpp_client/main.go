@@ -18,9 +18,9 @@ import (
 
 func main() {
 	// 解析命令行参数
-	address := flag.String("address", "localhost:2775", "服务器地址")
-	systemID := flag.String("system-id", "test", "系统ID")
-	password := flag.String("password", "password", "密码")
+	address := flag.String("address", "localhost:5016", "服务器地址")
+	systemID := flag.String("system-id", "smmc-zc", "系统ID")
+	password := flag.String("password", "rXpJe8EA", "密码")
 	flag.Parse()
 
 	// 初始化日志

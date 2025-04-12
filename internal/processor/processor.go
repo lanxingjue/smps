@@ -221,3 +221,27 @@ func (p *ResponseProcessor) GetStats() map[string]interface{} {
 func (p *ResponseProcessor) Stop() {
 	close(p.done)
 }
+
+// 添加Handle方法
+func (p *ResponseProcessor) Handle(ctx context.Context, msg *protocol.Message) error {
+	return p.HandleMessage(ctx, msg)
+}
+
+// 添加HandleMessage方法
+func (p *ResponseProcessor) HandleMessage(ctx context.Context, msg *protocol.Message) error {
+	// 示例实现：处理消息并记录日志
+	logger.Info(fmt.Sprintf("处理消息: %v", msg))
+	decision, err := p.ProcessResponse(msg)
+	if err != nil {
+		logger.Error(fmt.Sprintf("处理消息时出错: %v", err))
+		return err
+	}
+
+	logger.Info(fmt.Sprintf("决策结果: %v", decision))
+	return nil
+}
+
+// 如果没有HandlerName方法，也需要添加
+func (p *ResponseProcessor) HandlerName() string {
+	return "响应处理器"
+}
